@@ -13,12 +13,12 @@ function App() {
   const [validatingApi, setValidatingApi] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [watchedMovies, setWatchedMovies] = useState([]);
 
-  
+  // Get user location on mount
   useEffect(() => {
     getUserLocation();
   }, []);
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent?key=${apiKey}`;
 
   const getUserLocation = async () => {
     setLocationLoading(true);
@@ -133,6 +133,7 @@ function App() {
   const validateApiKey = async () => {
     setValidatingApi(true);
     setApiError('');
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent?key=${apiKey}`;
     
     try {
       console.log('Testing API key...');
@@ -238,6 +239,10 @@ function App() {
       ? `\n- User location: ${userLocation.city}, ${userLocation.country}. Consider regional cinema, local favorites, or culturally relevant films from this region when appropriate.`
       : '';
 
+    const watchedContext = watchedMovies.length > 0
+      ? `\n- Movies already watched (DO NOT RECOMMEND THESE): ${watchedMovies.join(', ')}`
+      : '';
+
     const prompt = `You are a movie recommendation expert. Based on the user's preferences, recommend ONE perfect movie.
 
 User preferences:
@@ -245,7 +250,9 @@ User preferences:
 - Genre: ${genreMap[answers.genre]}
 - Era: A movie ${eraMap[answers.era]}
 - Pace: ${paceMap[answers.pace]}
-- Ending: ${endingMap[answers.ending]}${locationContext}
+- Ending: ${endingMap[answers.ending]}${locationContext}${watchedContext}
+
+IMPORTANT: ${watchedMovies.length > 0 ? 'Do NOT recommend any of the movies listed as already watched. Choose a DIFFERENT movie.' : 'Recommend a movie that fits all preferences.'}
 
 Respond in this EXACT format:
 MOVIE: [Movie Title] (Year)
@@ -255,6 +262,7 @@ RUNTIME: [Runtime]
 
 Make sure it's a real movie matching their preferences.`;
 
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent?key=${apiKey}`;
 
     try {
       const response = await fetch(url, {
@@ -314,14 +322,24 @@ Make sure it's a real movie matching their preferences.`;
     setRecommendation(null);
   };
 
+  const handleAlreadyWatched = () => {
+    // Add current movie to watched list
+    if (recommendation && recommendation.title !== 'Error') {
+      setWatchedMovies([...watchedMovies, recommendation.title]);
+      console.log('🎬 Marked as watched:', recommendation.title);
+    }
+    // Get a new recommendation
+    getRecommendation();
+  };
+
   if (showApiInput) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-4 font-['Space_Grotesk']">
         <div className="w-full max-w-md">
           <div className="text-center mb-8 animate-fade-in">
             <Film className="w-16 h-16 text-white mx-auto mb-4 animate-float" />
-            <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">MovAI</h1>
-            <p className="text-gray-400 text-sm">AI Powered (based on Barry Schartz , Iyengar & Lepper research)</p>
+            <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">CINEMATIC</h1>
+            <p className="text-gray-400 text-sm">AI-Powered Movie Recommendations</p>
           </div>
 
           <div className="bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-2xl p-8 backdrop-blur-sm animate-slide-up">
@@ -590,13 +608,30 @@ Make sure it's a real movie matching their preferences.`;
             </div>
           </div>
 
-          <button
-            onClick={resetApp}
-            className="w-full bg-white text-black font-semibold py-4 rounded-2xl hover:bg-gray-200 transition-all flex items-center justify-center gap-3 group"
-          >
-            <RotateCcw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
-            <span>Find Another</span>
-          </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button
+              onClick={handleAlreadyWatched}
+              disabled={loading}
+              className="bg-gradient-to-br from-gray-900 to-black border border-gray-800 text-white font-semibold py-4 rounded-2xl hover:border-gray-600 transition-all flex items-center justify-center gap-3 group disabled:opacity-50"
+            >
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              <span>Already Watched</span>
+            </button>
+
+            <button
+              onClick={resetApp}
+              className="bg-white text-black font-semibold py-4 rounded-2xl hover:bg-gray-200 transition-all flex items-center justify-center gap-3 group"
+            >
+              <RotateCcw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
+              <span>Start Over</span>
+            </button>
+          </div>
+
+          {watchedMovies.length > 0 && (
+            <div className="mt-6 text-center text-gray-500 text-xs animate-fade-in">
+              <p>Excluded {watchedMovies.length} movie{watchedMovies.length > 1 ? 's' : ''} you've already watched</p>
+            </div>
+          )}
         </div>
 
         <style jsx>{`
